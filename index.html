@@ -85,6 +85,11 @@
       color: red;
       cursor: pointer;
     }
+    #reportCanvas {
+      display: none;
+      margin: 2rem auto;
+      max-width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -93,6 +98,7 @@
   <div id="controls">
     <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
     <button onclick="exportWardrobe()">Export</button>
+    <button onclick="generateReport()">Export Report</button>
     <input type="file" id="importFile" accept=".json">
     <label for="importFile" style="cursor:pointer;">Import JSON</label>
   </div>
@@ -107,6 +113,7 @@
 
   <input type="text" id="search" placeholder="Search by name or tag...">
   <div class="grid" id="wardrobeGrid"></div>
+  <canvas id="reportCanvas"></canvas>
 
   <script>
     let wardrobe = JSON.parse(localStorage.getItem('wardrobe')) || [];
@@ -161,6 +168,52 @@
       a.setAttribute("href", dataStr);
       a.setAttribute("download", "wardrobe.json");
       a.click();
+    }
+
+    function generateReport() {
+      const canvas = document.getElementById("reportCanvas");
+      const ctx = canvas.getContext("2d");
+      const grouped = {};
+      wardrobe.forEach(item => {
+        item.tags.forEach(tag => {
+          if (!grouped[tag]) grouped[tag] = [];
+          grouped[tag].push(item);
+        });
+      });
+
+      const width = 1000;
+      const rowHeight = 180;
+      const imageSize = 100;
+      const padding = 20;
+      const tags = Object.keys(grouped);
+      const height = tags.length * rowHeight + padding;
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, width, height);
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = '#000';
+
+      tags.forEach((tag, row) => {
+        ctx.fillText(tag.toUpperCase(), 10, row * rowHeight + 20);
+        grouped[tag].forEach((item, col) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            ctx.drawImage(img, col * (imageSize + 10) + 10, row * rowHeight + 30, imageSize, imageSize);
+            ctx.fillText(item.name, col * (imageSize + 10) + 10, row * rowHeight + 30 + imageSize + 15);
+          };
+          img.src = item.image;
+        });
+      });
+
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.download = 'wardrobe_report.jpg';
+        link.href = canvas.toDataURL("image/jpeg", 1.0);
+        link.click();
+      }, 3000);
     }
 
     importFile.addEventListener('change', (event) => {
