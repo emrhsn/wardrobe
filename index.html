@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Wardrobe</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    form {
+      max-width: 500px;
+      margin: 1rem auto;
+      padding: 1rem;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    form input, form textarea {
+      display: block;
+      width: 100%;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+    #search {
+      display: block;
+      margin: 1rem auto;
+      padding: 0.5rem;
+      width: 90%;
+      max-width: 400px;
+      font-size: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .item {
+      background: white;
+      border-radius: 8px;
+      padding: 0.5rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .item img {
+      max-width: 100%;
+      border-radius: 4px;
+    }
+    .item h2 {
+      font-size: 1rem;
+      margin: 0.5rem 0 0.25rem;
+    }
+    .tags {
+      font-size: 0.8rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>My Wardrobe</h1>
+
+  <form id="addForm">
+    <input type="text" id="itemName" placeholder="Item name" required>
+    <input type="text" id="itemTags" placeholder="Tags (comma-separated)" required>
+    <input type="text" id="itemImageURL" placeholder="Image URL (or leave empty to upload)">
+    <input type="file" id="itemImageFile" accept="image/*">
+    <button type="submit">Add Item</button>
+  </form>
+
+  <input type="text" id="search" placeholder="Search by name or tag...">
+  <div class="grid" id="wardrobeGrid"></div>
+
+  <script>
+    let wardrobe = JSON.parse(localStorage.getItem('wardrobe')) || [];
+
+    const grid = document.getElementById('wardrobeGrid');
+    const searchInput = document.getElementById('search');
+    const form = document.getElementById('addForm');
+
+    function renderItems(items) {
+      grid.innerHTML = '';
+      items.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+          <img src="${item.image}" alt="${item.name}">
+          <h2>${item.name}</h2>
+          <div class="tags">${item.tags.join(', ')}</div>
+        `;
+        grid.appendChild(div);
+      });
+    }
+
+    function filterItems(query) {
+      const lower = query.toLowerCase();
+      return wardrobe.filter(item =>
+        item.name.toLowerCase().includes(lower) ||
+        item.tags.some(tag => tag.toLowerCase().includes(lower))
+      );
+    }
+
+    function saveWardrobe() {
+      localStorage.setItem('wardrobe', JSON.stringify(wardrobe));
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('itemName').value.trim();
+      const tags = document.getElementById('itemTags').value.split(',').map(t => t.trim());
+      const imageUrlInput = document.getElementById('itemImageURL').value.trim();
+      const fileInput = document.getElementById('itemImageFile').files[0];
+
+      let imageUrl = imageUrlInput;
+      if (!imageUrl && fileInput) {
+        imageUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.readAsDataURL(fileInput);
+        });
+      }
+
+      if (!imageUrl) return alert("Please provide an image URL or upload a file.");
+
+      wardrobe.push({ name, tags, image: imageUrl });
+      saveWardrobe();
+      renderItems(filterItems(searchInput.value));
+      form.reset();
+    });
+
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value;
+      renderItems(filterItems(query));
+    });
+
+    renderItems(wardrobe);
+  </script>
+</body>
+</html>
